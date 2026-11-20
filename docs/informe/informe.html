@@ -1,0 +1,117 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Informe técnico - Air Quality Intelligence</title>
+<style>
+body{font-family:Calibri,"Segoe UI",sans-serif;font-size:11pt;line-height:1.4;color:#1b2522}
+h1{font-size:22pt;color:#0f766e;margin:0 0 6pt}h2{font-size:15pt;color:#0f766e;border-bottom:1.5pt solid #0f766e;padding-bottom:2pt;margin-top:20pt}
+h3{font-size:12pt;color:#24423d;margin-top:12pt}
+table{border-collapse:collapse;width:100%;margin:6pt 0 10pt;font-size:9.5pt}
+th{background:#0f766e;color:#fff;padding:4pt 6pt;text-align:left;border:1pt solid #0f766e}
+td{padding:3pt 6pt;border:1pt solid #c9d3cf}td.n{text-align:right}
+.portada{text-align:center;padding-top:120pt}.portada p{font-size:12pt;margin:4pt}
+.fig{text-align:center;margin:6pt 0 2pt}.cap{text-align:center;font-size:9pt;color:#4d5a55;margin:0 0 12pt;font-style:italic}
+.formula{font-family:Cambria Math,Cambria,serif;font-size:12pt;text-align:center;margin:8pt 0}
+.caja{background:#e2f3f0;border-left:4pt solid #0f766e;padding:6pt 10pt;margin:8pt 0}
+</style></head><body>
+<div class="portada">
+<h1>AIR QUALITY INTELLIGENCE</h1>
+<p style="font-size:14pt">Sistema inteligente para el monitoreo, descontaminación y purificación del aire mediante tecnología y software</p>
+<p>&nbsp;</p><p><b>Informe técnico</b></p><p>&nbsp;</p>
+<p>José Fernando Téllez</p><p>Inteligencia de Negocios</p><p>&nbsp;</p>
+<p>Repositorio: https://github.com/&lt;usuario&gt;/air-quality-intelligence</p>
+<p>Video demostrativo: &lt;enlace de YouTube&gt;</p><p>&nbsp;</p>
+<p>20 de noviembre de 2026</p>
+</div>
+<br style="page-break-before:always" clear="all">
+
+<h2>1. Introducción y reto</h2>
+<p>La contaminación del aire por material particulado (PM2.5 y PM10) y gases como el monóxido de carbono (CO) y el dióxido de carbono (CO₂) afecta la salud de las personas expuestas en ambientes exteriores, industriales e interiores. El reto planteado es: <i>¿cómo desarrollar una aplicación inteligente que permita identificar el ingreso de aire contaminado, analizar sus componentes, controlar el proceso de descontaminación y verificar la calidad del aire purificado mediante indicadores y herramientas de inteligencia de negocios?</i></p>
+<p><b>Objetivo general:</b> diseñar y desarrollar una aplicación de inteligencia de negocios que monitoree la calidad del aire, identifique contaminantes, simule el proceso de purificación y presente los resultados en dashboards e indicadores para apoyar la toma de decisiones.</p>
+<p><b>Objetivos específicos:</b> (1) registrar y clasificar el aire que ingresa; (2) seleccionar la tecnología de purificación según el contaminante y controlar su tiempo de funcionamiento; (3) validar el aire tratado comparando valores iniciales y finales; (4) construir un dashboard con indicadores de eficiencia, alertas y un modelo predictivo.</p>
+
+<h2>2. Arquitectura tecnológica</h2>
+<p>La solución se organiza en cuatro componentes: <b>entrada de aire</b> (sensores de PM2.5, PM10, CO₂, CO y COV), <b>sistema de purificación</b> (cámara de 60 m³ con cinco tecnologías), <b>software BI</b> (API, motor de reglas, modelo predictivo y dashboard) y <b>base de datos</b> (mediciones de entrada, proceso y salida).</p>
+<p class="fig"><img src="../capturas/arquitectura.png" width="640" height="277"></p><p class="cap">Figura 1. Arquitectura de la solución.</p>
+<table><tr><th>Capa</th><th>Tecnología</th><th>Uso</th></tr>
+<tr><td>Interfaz</td><td>HTML5, CSS3, JavaScript, Chart.js 4.4</td><td>Módulos 1–4, dashboard y reportes (modo claro/oscuro, adaptable a móvil)</td></tr>
+<tr><td>Backend</td><td>Node.js ≥ 22 (http nativo)</td><td>API REST, simulación de sensores y del proceso, reglas de alerta</td></tr>
+<tr><td>Base de datos</td><td>SQLite (node:sqlite); script equivalente PostgreSQL</td><td>Almacenamiento de lotes, mediciones, procesos, alertas y filtros</td></tr>
+<tr><td>Análisis</td><td>Node.js y Python (librería estándar)</td><td>Estadística antes/después, prueba t pareada, regresión, exportación CSV para Power BI</td></tr></table>
+
+<h3>2.1 Modelo de datos</h3>
+<table><tr><th>Tabla</th><th>Contenido</th></tr>
+<tr><td>lotes</td><td>Cada ingreso de aire: fecha y hora, escenario de origen, ubicación, volumen, fuente (sensor/manual), nivel e ICA de entrada.</td></tr>
+<tr><td>mediciones</td><td>Lecturas de PM2.5, PM10, CO₂, CO y COV con su etapa (entrada, proceso minuto a minuto, salida) y nivel.</td></tr>
+<tr><td>procesos</td><td>Filtros usados, tiempo programado y real, tiempo predicho, % de reducción por contaminante, eficiencia global y resultado.</td></tr>
+<tr><td>alertas</td><td>Tipo, severidad, contaminante, valor, umbral, mensaje y estado (atendida).</td></tr>
+<tr><td>filtros</td><td>Catálogo de tecnologías con CADR, vida útil y horas de uso.</td></tr>
+<tr><td>v_comparacion (vista)</td><td>Una fila por ingreso con valores antes y después: fuente del dashboard y de Power BI.</td></tr></table>
+
+<h3>2.2 Clasificación de la calidad del aire</h3>
+<p>Se usa una escala de seis niveles basada en el Índice de Calidad del Aire de Colombia (Resolución 2254 de 2017) para PM2.5 y PM10; los cortes de CO siguen la EPA, los de CO₂ las recomendaciones de ventilación (ASHRAE/REHVA) y los de COV las guías de la agencia ambiental alemana (UBA). El nivel global del aire es el del contaminante más crítico.</p>
+<table><tr><th>#</th><th>Nivel</th><th>PM2.5 µg/m³</th><th>PM10 µg/m³</th><th>CO₂ ppm</th><th>CO ppm</th><th>COV mg/m³</th></tr><tr><td>1</td><td>Buena</td><td class=n>≤ 12</td><td class=n>≤ 54</td><td class=n>≤ 800</td><td class=n>≤ 4.4</td><td class=n>≤ 0.3</td></tr><tr><td>2</td><td>Aceptable</td><td class=n>12 – 37</td><td class=n>54 – 154</td><td class=n>800 – 1000</td><td class=n>4.4 – 9.4</td><td class=n>0.3 – 0.5</td></tr><tr><td>3</td><td>Dañina para grupos sensibles</td><td class=n>37 – 55</td><td class=n>154 – 254</td><td class=n>1000 – 1500</td><td class=n>9.4 – 12.4</td><td class=n>0.5 – 1</td></tr><tr><td>4</td><td>Dañina</td><td class=n>55 – 150</td><td class=n>254 – 354</td><td class=n>1500 – 2000</td><td class=n>12.4 – 15.4</td><td class=n>1 – 3</td></tr><tr><td>5</td><td>Muy dañina</td><td class=n>150 – 250</td><td class=n>354 – 424</td><td class=n>2000 – 5000</td><td class=n>15.4 – 30.4</td><td class=n>3 – 10</td></tr><tr><td>6</td><td>Peligrosa</td><td class=n>> 250</td><td class=n>> 424</td><td class=n>> 5000</td><td class=n>> 30.4</td><td class=n>> 10</td></tr></table>
+
+<h3>2.3 Tecnologías de purificación</h3>
+<table><tr><th>Tecnología</th><th>Principio</th><th>Contaminante objetivo</th><th>CADR m³/h</th><th>Vida útil h</th></tr><tr><td>Prefiltro G4</td><td>Malla sintética plisada</td><td>PM10 (partículas gruesas)</td><td class=n>500</td><td class=n>500</td></tr><tr><td>Filtro HEPA H13</td><td>Fibra de vidrio de alta eficiencia</td><td>PM2.5 y PM10 (99,97 % a 0,3 µm)</td><td class=n>320</td><td class=n>2000</td></tr><tr><td>Carbón activado</td><td>Adsorción en lecho de carbón granular</td><td>COV, olores y gases orgánicos</td><td class=n>260</td><td class=n>1000</td></tr><tr><td>Catalizador de CO</td><td>Oxidación catalítica (hopcalita) CO → CO₂</td><td>Monóxido de carbono</td><td class=n>220</td><td class=n>3000</td></tr><tr><td>Depurador de CO₂</td><td>Adsorción en zeolita + renovación controlada</td><td>Dióxido de carbono</td><td class=n>180</td><td class=n>1500</td></tr></table>
+<div class="caja">Ninguna tecnología elimina todos los contaminantes: el HEPA captura partículas pero no gases; el carbón activado adsorbe COV pero casi no retiene CO ni CO₂; el CO requiere oxidación catalítica y el CO₂ un adsorbente específico o renovación de aire. Por eso el sistema recomienda la combinación según los contaminantes detectados.</div>
+
+<h3>2.4 Modelo físico y predictivo</h3>
+<p>La cámara se modela como un reactor de mezcla completa. Para cada contaminante:</p>
+<p class="formula">C(t) = C<sub>∞</sub> + (C<sub>0</sub> − C<sub>∞</sub>) · e<sup>−k·t</sup>,&nbsp;&nbsp;&nbsp; k = Σ (CADR<sub>i</sub> · η<sub>i</sub> · d<sub>i</sub>) / V</p>
+<p>donde C<sub>∞</sub> es la concentración mínima alcanzable, η la eficiencia de captura de cada filtro, d un factor de desgaste (la eficiencia cae hasta 35 % al final de la vida útil) y V el volumen de la cámara. Despejando t se predice el tiempo necesario para alcanzar el nivel “Buena”. Durante el proceso, k se reestima por mínimos cuadrados sobre ln(C − C<sub>∞</sub>) con las lecturas reales para actualizar el tiempo restante.</p>
+
+<h2>3. Desarrollo de la aplicación</h2>
+<h3>Módulo 1. Monitoreo del aire contaminado</h3>
+<p>Registra la fecha y hora del ingreso, mide los cinco contaminantes (sensores simulados por escenario o ingreso manual), calcula el ICA de PM2.5, clasifica el nivel, genera alertas y recomienda la tecnología de purificación con el tiempo estimado.</p>
+<p class="fig"><img src="../capturas/monitoreo.png" width="620" height="710"></p><p class="cap">Figura 2. Módulo de monitoreo.</p>
+<h3>Módulo 2. Proceso de descontaminación</h3>
+<p>Permite seleccionar los filtros (con su vida útil), fijar el tiempo de funcionamiento (5–120 min), detener automáticamente al alcanzar calidad “Buena” y activar la filtración simulada. Cada minuto se registra una medición en la base de datos y se muestra la curva de concentración y el tiempo restante estimado.</p>
+<p class="fig"><img src="../capturas/proceso.png" width="620" height="624"></p><p class="cap">Figura 3. Proceso de descontaminación con registro minuto a minuto.</p>
+<h3>Módulo 3. Validación del aire purificado</h3>
+<p>Al terminar se toma una nueva medición, se comparan los valores iniciales y finales, se calcula el porcentaje de reducción de cada contaminante y la eficiencia global (promedio de los contaminantes que estaban fuera de “Buena”), y se clasifica el resultado: <b>Óptimo</b> (aire en nivel Buena y eficiencia ≥ 50 %), <b>Aceptable</b> (nivel Aceptable o mejor) o <b>Insuficiente</b>.</p>
+<p class="fig"><img src="../capturas/validacion.png" width="620" height="538"></p><p class="cap">Figura 4. Validación antes vs. después.</p>
+<h3>Módulo 4. Inteligencia de negocios</h3>
+<p>El dashboard incluye seis indicadores (PM2.5 antes→después, CO₂ en ppm, porcentaje de reducción, tiempo de purificación, porcentaje de aire conforme y alertas abiertas), cinco visualizaciones, el estado de los filtros, la tabla de alertas y recomendaciones automáticas. Se puede filtrar por rango de fechas y escenario; la pestaña de reportes genera el resumen ejecutivo, CSV y PDF.</p>
+<p class="fig"><img src="../capturas/dashboard_1.png" width="620" height="519"></p><p class="cap">Figura 5. Dashboard: filtros, indicadores y gráficos principales.</p><p class="fig"><img src="../capturas/dashboard_2.png" width="620" height="450"></p><p class="cap">Figura 6. Dashboard: tiempos por escenario, estado de filtros, recomendaciones y alertas.</p>
+<h3>Componente de inteligencia</h3>
+<table><tr><th>Regla / modelo</th><th>Condición</th><th>Acción</th></tr>
+<tr><td>Contaminación en la entrada</td><td>Contaminante en nivel ≥ 3 (media), 4 (alta) o ≥ 5 (crítica)</td><td>Alerta y recomendación de filtros</td></tr>
+<tr><td>Eficiencia baja</td><td>A mitad del tiempo programado, reducción &lt; 40 % de un contaminante crítico</td><td>Alerta: revisar selección o estado del filtro</td></tr>
+<tr><td>Salida fuera de norma</td><td>Aire tratado con nivel ≥ 3</td><td>Alerta: no liberar, repetir tratamiento</td></tr>
+<tr><td>Filtro saturado</td><td>Horas de uso ≥ 80 % de la vida útil</td><td>Alerta de mantenimiento preventivo</td></tr>
+<tr><td>Modelo predictivo</td><td>Decaimiento exponencial + regresión histórica</td><td>Tiempo estimado al iniciar y tiempo restante en línea</td></tr></table>
+
+<h2>4. Resultados</h2>
+<p>Se analizaron 115 ingresos de aire simulados entre 2026-09-21 y 2026-11-19, de los cuales 111 completaron el tratamiento.</p>
+<table><tr><th>Contaminante</th><th>Unidad</th><th>Promedio antes</th><th>Promedio después</th><th>Reducción media</th></tr><tr><td>PM2.5</td><td>µg/m³</td><td class=n>77,08</td><td class=n>9,56</td><td class=n>81,4 %</td></tr><tr><td>PM10</td><td>µg/m³</td><td class=n>164,47</td><td class=n>16,13</td><td class=n>83,8 %</td></tr><tr><td>CO₂</td><td>ppm</td><td class=n>851,35</td><td class=n>673,02</td><td class=n>10,9 %</td></tr><tr><td>CO</td><td>ppm</td><td class=n>8,57</td><td class=n>3,69</td><td class=n>37,1 %</td></tr><tr><td>COV totales</td><td>mg/m³</td><td class=n>0,96</td><td class=n>0,37</td><td class=n>50,5 %</td></tr></table>
+<p>El material particulado se redujo en promedio 81,4 % (PM2.5) y 83,8 % (PM10), con diferencias estadísticamente significativas (prueba t pareada, ver <i>docs/analisis_resultados.md</i>). El CO₂ apenas bajó 10,9 % porque solo una parte de los tratamientos incluyó el depurador de CO₂. El tiempo medio de purificación fue 27,5 min y el 82,9 % de los tratamientos entregó aire conforme (Óptimo 56, Aceptable 36, Insuficiente 19).</p>
+<p><b>Ejemplo:</b> el ingreso #109 (zona industrial) llegó con PM2.5 = 113,2 µg/m³ y CO = 17,67 ppm; tras 38 min con PRE + HEPA + CARBON + CATAL salió con 4,2 µg/m³ y 2,62 ppm (predicción: 39,7 min).</p>
+<h3>Desempeño por escenario</h3>
+<table><tr><th>Escenario</th><th>Ingresos</th><th>PM2.5 inicial</th><th>Tiempo medio (min)</th><th>Eficiencia</th><th>Insuficientes</th></tr><tr><td>Urbano - tráfico vehicular</td><td class=n>44</td><td class=n>45,9</td><td class=n>18,0</td><td class=n>60,2 %</td><td class=n>4</td></tr><tr><td>Interior con alta ocupación</td><td class=n>23</td><td class=n>22,9</td><td class=n>37,8</td><td class=n>64,5 %</td><td class=n>6</td></tr><tr><td>Zona industrial</td><td class=n>18</td><td class=n>117,9</td><td class=n>30,1</td><td class=n>76,3 %</td><td class=n>4</td></tr><tr><td>Humo de incendio forestal</td><td class=n>17</td><td class=n>212,2</td><td class=n>43,2</td><td class=n>84,8 %</td><td class=n>4</td></tr><tr><td>Obra en construcción</td><td class=n>13</td><td class=n>60,0</td><td class=n>18,2</td><td class=n>73,3 %</td><td class=n>1</td></tr></table>
+<h3>Desempeño por combinación de tecnologías</h3>
+<table><tr><th>Tecnologías</th><th>Procesos</th><th>Eficiencia</th><th>Tiempo medio (min)</th></tr><tr><td>PRE + HEPA + CARBON + CATAL</td><td class=n>31</td><td class=n>79,5 %</td><td class=n>28,9</td></tr><tr><td>HEPA + CARBON + CO2</td><td class=n>18</td><td class=n>69,4 %</td><td class=n>33,9</td></tr><tr><td>HEPA</td><td class=n>15</td><td class=n>43,6 %</td><td class=n>34,9</td></tr><tr><td>HEPA + CARBON + CATAL</td><td class=n>14</td><td class=n>57,7 %</td><td class=n>16,0</td></tr><tr><td>PRE + HEPA + CARBON</td><td class=n>9</td><td class=n>75,7 %</td><td class=n>18,7</td></tr><tr><td>PRE + HEPA + CARBON + CATAL + CO2</td><td class=n>8</td><td class=n>76,9 %</td><td class=n>36,1</td></tr><tr><td>HEPA + CARBON</td><td class=n>6</td><td class=n>68,9 %</td><td class=n>20,0</td></tr><tr><td>HEPA + CATAL</td><td class=n>4</td><td class=n>67,0 %</td><td class=n>18,3</td></tr></table>
+<p>Usar solo HEPA cuando hay gases presentes produce la menor eficiencia: confirma que la tecnología debe elegirse según el contaminante.</p>
+<h3>Modelo predictivo</h3>
+<p>Regresión lineal histórica: <b>tiempo ≈ 17,70 + 0,122 × PM2.5 inicial</b> (R² = 0,416, n = 58). El R² moderado se explica porque el tiempo también depende de los gases presentes; por eso la aplicación usa el modelo exponencial por contaminante, cuyo error medio absoluto frente al tiempo real fue de <b>1,0 min</b>.</p>
+<h3>Alertas</h3>
+<table><tr><th>Tipo</th><th>Severidad</th><th>Cantidad</th></tr><tr><td>CONTAMINACION_ENTRADA</td><td>alta</td><td class=n>108</td></tr><tr><td>CONTAMINACION_ENTRADA</td><td>critica</td><td class=n>56</td></tr><tr><td>CONTAMINACION_ENTRADA</td><td>media</td><td class=n>101</td></tr><tr><td>EFICIENCIA_BAJA</td><td>alta</td><td class=n>44</td></tr><tr><td>FILTRO_SATURADO</td><td>media</td><td class=n>1</td></tr><tr><td>SALIDA_FUERA_NORMA</td><td>alta</td><td class=n>12</td></tr><tr><td>SALIDA_FUERA_NORMA</td><td>critica</td><td class=n>7</td></tr></table>
+<p class="fig"><img src="../capturas/reportes.png" width="560" height="583"></p><p class="cap">Figura 7. Reporte para la toma de decisiones.</p>
+
+<h2>5. Decisiones recomendadas por el sistema</h2>
+<ul><li>Solo el 82.9 % de los tratamientos entrega aire conforme (Buena/Aceptable). Meta: ≥ 90 %.</li><li>El escenario "Humo de incendio forestal" exige el mayor tiempo de purificación (43.2 min en promedio): conviene programarlo en horas de baja demanda o ampliar el CADR.</li><li>Reemplazar Prefiltro G4 (83.7 % de vida útil); la eficiencia de captura ya se está degradando.</li><li>La combinación HEPA tiene eficiencia media de 43.6 %: no cubre todos los contaminantes. Usar la recomendación automática.</li><li>El CO₂ apenas se reduce (10.9 %): HEPA y carbón activado no lo retienen; se requiere depurador de CO₂ o renovación de aire.</li><li>72 ingresos llegaron con nivel dañino o peor: activar protocolo de prefiltrado y aviso al personal expuesto.</li></ul>
+
+<h2>6. Conclusiones</h2>
+<ul>
+<li>La aplicación cubre el ciclo completo: detección del ingreso, medición y clasificación, purificación controlada, validación y análisis BI, con todas las mediciones almacenadas en la base de datos.</li>
+<li>La combinación de tecnologías según el contaminante es determinante: el HEPA reduce más del 98 % del material particulado, pero el CO, los COV y el CO₂ requieren catalizador, carbón activado y depurador respectivamente.</li>
+<li>Los indicadores de reducción, tiempo y conformidad permiten comparar escenarios y combinaciones de filtros y decidir mantenimiento, programación y capacidad (CADR).</li>
+<li>El componente de inteligencia (reglas de alerta y modelo predictivo) anticipa el tiempo de tratamiento con un error cercano a un minuto y detecta filtros degradados y tratamientos insuficientes.</li>
+<li>Limitaciones y trabajo futuro: los datos son simulados; el siguiente paso es conectar sensores reales (p. ej. PMS5003 para partículas, SCD30 para CO₂ y MQ-7 para CO con un ESP32) a la misma API y migrar a PostgreSQL con el script incluido.</li>
+</ul>
+<h2>Referencias</h2>
+<ul>
+<li>Ministerio de Ambiente y Desarrollo Sostenible. Resolución 2254 de 2017 (norma de calidad del aire ambiente, Colombia).</li>
+<li>U.S. EPA. Technical Assistance Document for the Reporting of Daily Air Quality – the Air Quality Index (AQI).</li>
+<li>ASHRAE Standard 62.1 – Ventilation and Acceptable Indoor Air Quality.</li>
+<li>Umweltbundesamt (UBA). Guide values for indoor air: total volatile organic compounds (TVOC).</li>
+<li>AHAM AC-1. Method for Measuring Performance of Portable Household Electric Room Air Cleaners (CADR).</li>
+</ul>
+</body></html>

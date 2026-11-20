@@ -1,0 +1,9 @@
+node_modules/
+data/*.db
+data/*.db-wal
+data/*.db-shm
+docs/v_comparacion.csv
+docs/informe/~$*
+*.log
+.DS_Store
+Thumbs.db

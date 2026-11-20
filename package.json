@@ -1,0 +1,17 @@
+{
+  "name": "air-quality-intelligence",
+  "version": "1.0.0",
+  "description": "Sistema inteligente para el monitoreo, descontaminación y purificación del aire con dashboard de inteligencia de negocios",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node scripts/seed.js",
+    "analisis": "node scripts/analisis.js",
+    "test": "node scripts/test.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "author": "José Fernando Téllez",
+  "license": "MIT"
+}

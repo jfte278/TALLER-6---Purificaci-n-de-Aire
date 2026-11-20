@@ -56,7 +56,7 @@ td{padding:3pt 6pt;border:1pt solid #c9d3cf}td.n{text-align:right}
 <p>&nbsp;</p><p><b>Informe técnico</b></p><p>&nbsp;</p>
 <p>José Fernando Téllez</p><p>Inteligencia de Negocios</p><p>&nbsp;</p>
 <p>Repositorio: https://github.com/jfte278/TALLER-6---Purificaci-n-de-Aire</p>
-<p>Video demostrativo: pendiente</p><p>&nbsp;</p>
+<p>Video demostrativo: https://youtu.be/svWP9xG1EHo</p><p>&nbsp;</p>
 <p>${new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
 </div>
 <br style="page-break-before:always" clear="all">

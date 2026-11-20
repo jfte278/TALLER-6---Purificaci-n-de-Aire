@@ -4,6 +4,8 @@ Aplicación web que simula una cámara de purificación de aire. El aire contami
 
 La hice como respuesta al reto de la actividad: *¿cómo identificar el aire contaminado que entra, analizar sus componentes, controlar la descontaminación y verificar el resultado con indicadores y BI?*
 
+🎥 **Video demostrativo:** https://youtu.be/svWP9xG1EHo · 📄 **Informe técnico:** [PDF](docs/Informe_Tecnico_Air_Quality_Intelligence.pdf)
+
 ![Dashboard](docs/capturas/dashboard.png)
 
 ## Qué hace cada módulo
@@ -100,7 +102,7 @@ npm start            # crea la base de datos con 60 días de historia y abre htt
 - Análisis de resultados: [`docs/analisis_resultados.md`](docs/analisis_resultados.md).
 - Componente de inteligencia: reglas de alerta + modelo predictivo.
 - Informe técnico: [`docs/Informe_Tecnico_Air_Quality_Intelligence.pdf`](docs/Informe_Tecnico_Air_Quality_Intelligence.pdf).
-- Video demostrativo: guion en [`docs/guion_video.md`](docs/guion_video.md) — enlace de YouTube: pendiente.
+- Video demostrativo: guion en [`docs/guion_video.md`](docs/guion_video.md) — video en YouTube: https://youtu.be/svWP9xG1EHo
 
 > **Sobre los datos:** son simulados, pero no al azar. Detrás hay un modelo físico sencillo de una cámara de 60 m³ donde la concentración baja de forma exponencial según los filtros que se usen. Un detalle importante: el HEPA atrapa partículas pero no gases, y el carbón activado sirve para los COV pero casi no retiene CO ni CO₂. Por eso el sistema combina tecnologías según lo que detecten los sensores.
 

@@ -49,8 +49,8 @@ flowchart LR
 Requisito: **Node.js 22.13 o superior** (no requiere `npm install`).
 
 ```bash
-git clone https://github.com/<usuario>/air-quality-intelligence.git
-cd air-quality-intelligence
+git clone https://github.com/jfte278/TALLER-6---Purificaci-n-de-Aire.git
+cd TALLER-6---Purificaci-n-de-Aire
 npm start            # crea la base de datos con 60 días de historia y abre http://localhost:3000
 ```
 
@@ -100,7 +100,7 @@ npm start            # crea la base de datos con 60 días de historia y abre htt
 - Análisis de resultados: [`docs/analisis_resultados.md`](docs/analisis_resultados.md).
 - Componente de inteligencia: reglas de alerta + modelo predictivo.
 - Informe técnico: [`docs/Informe_Tecnico_Air_Quality_Intelligence.pdf`](docs/Informe_Tecnico_Air_Quality_Intelligence.pdf).
-- Video demostrativo: guion en [`docs/guion_video.md`](docs/guion_video.md) — enlace de YouTube: _pendiente_.
+- Video demostrativo: guion en [`docs/guion_video.md`](docs/guion_video.md) — enlace de YouTube: pendiente.
 
 > **Sobre los datos:** son simulados, pero no al azar. Detrás hay un modelo físico sencillo de una cámara de 60 m³ donde la concentración baja de forma exponencial según los filtros que se usen. Un detalle importante: el HEPA atrapa partículas pero no gases, y el carbón activado sirve para los COV pero casi no retiene CO ni CO₂. Por eso el sistema combina tecnologías según lo que detecten los sensores.
 

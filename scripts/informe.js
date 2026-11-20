@@ -55,8 +55,8 @@ td{padding:3pt 6pt;border:1pt solid #c9d3cf}td.n{text-align:right}
 <p style="font-size:14pt">Sistema inteligente para el monitoreo, descontaminación y purificación del aire mediante tecnología y software</p>
 <p>&nbsp;</p><p><b>Informe técnico</b></p><p>&nbsp;</p>
 <p>José Fernando Téllez</p><p>Inteligencia de Negocios</p><p>&nbsp;</p>
-<p>Repositorio: https://github.com/&lt;usuario&gt;/air-quality-intelligence</p>
-<p>Video demostrativo: &lt;enlace de YouTube&gt;</p><p>&nbsp;</p>
+<p>Repositorio: https://github.com/jfte278/TALLER-6---Purificaci-n-de-Aire</p>
+<p>Video demostrativo: pendiente</p><p>&nbsp;</p>
 <p>${new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
 </div>
 <br style="page-break-before:always" clear="all">

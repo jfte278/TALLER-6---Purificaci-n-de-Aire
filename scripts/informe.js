@@ -12,6 +12,7 @@ const k = d.kpi;
 const filas = db.prepare(`SELECT * FROM v_comparacion WHERE proceso_id IS NOT NULL`).all();
 const rango = db.prepare(`SELECT MIN(dia) a, MAX(dia) b FROM v_comparacion`).get();
 const f = (x, dec = 1) => (x == null ? '—' : Number(x).toLocaleString('es-CO', { minimumFractionDigits: dec, maximumFractionDigits: dec }));
+const fechaLarga = s => new Date(s + 'T12:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
 // Ajusta cada captura dentro de la página conservando su proporción (lee el tamaño del PNG)
 const img = (n, maxW = 620, maxH = 820) => {
   const buf = fs.readFileSync(path.join(__dirname, '..', 'docs', 'capturas', n + '.png'));
@@ -20,6 +21,10 @@ const img = (n, maxW = 620, maxH = 820) => {
   return `<p class="fig"><img src="../capturas/${n}.png" width="${Math.round(w0 * s)}" height="${Math.round(h0 * s)}"></p>`;
 };
 const ejemplo = db.prepare(`SELECT * FROM v_comparacion WHERE escenario='industrial' AND resultado='Óptimo' ORDER BY lote_id DESC LIMIT 1`).get();
+const soloHepa = d.combinaciones.find(c => c.filtros === 'HEPA');
+const mejorComb = [...d.combinaciones].filter(c => c.n >= 5).sort((a, b) => b.eficiencia - a.eficiencia)[0];
+const incendio = d.escenarios.find(e => e.escenario === 'incendio');
+const urbano = d.escenarios.find(e => e.escenario === 'urbano');
 
 const tablaCont = M.CLAVES.map(c => {
   const a = filas.reduce((s, r) => s + r[c + '_ini'], 0) / filas.length, b = filas.reduce((s, r) => s + r[c + '_fin'], 0) / filas.length;
@@ -29,6 +34,8 @@ const tablaEsc = d.escenarios.map(e => `<tr><td>${e.nombre}</td><td class=n>${e.
 const tablaComb = d.combinaciones.map(c => `<tr><td>${c.filtros.replace(/,/g, ' + ')}</td><td class=n>${c.n}</td><td class=n>${f(c.eficiencia)} %</td><td class=n>${f(c.tiempo)}</td></tr>`).join('');
 const niveles = M.NIVELES.slice(1).map(n => `<tr><td>${n.id}</td><td>${n.nombre}</td>${M.CLAVES.map(c => `<td class=n>${n.id === 1 ? '≤ ' + M.CORTES[c][0] : n.id === 6 ? '> ' + M.CORTES[c][4] : M.CORTES[c][n.id - 2] + ' – ' + M.CORTES[c][n.id - 1]}</td>`).join('')}</tr>`).join('');
 const filtros = M.FILTROS.map(x => `<tr><td>${x.nombre}</td><td>${x.tecnologia}</td><td>${x.objetivo}</td><td class=n>${x.cadr_m3h}</td><td class=n>${x.vida_util_h}</td></tr>`).join('');
+const nAlertas = d.alertasTipo.reduce((s, a) => s + a.n, 0);
+const alertasDe = t => d.alertasTipo.filter(a => a.tipo === t).reduce((s, a) => s + a.n, 0);
 
 const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Informe técnico - Air Quality Intelligence</title>
 <style>
@@ -54,97 +61,110 @@ td{padding:3pt 6pt;border:1pt solid #c9d3cf}td.n{text-align:right}
 </div>
 <br style="page-break-before:always" clear="all">
 
-<h2>1. Introducción y reto</h2>
-<p>La contaminación del aire por material particulado (PM2.5 y PM10) y gases como el monóxido de carbono (CO) y el dióxido de carbono (CO₂) afecta la salud de las personas expuestas en ambientes exteriores, industriales e interiores. El reto planteado es: <i>¿cómo desarrollar una aplicación inteligente que permita identificar el ingreso de aire contaminado, analizar sus componentes, controlar el proceso de descontaminación y verificar la calidad del aire purificado mediante indicadores y herramientas de inteligencia de negocios?</i></p>
-<p><b>Objetivo general:</b> diseñar y desarrollar una aplicación de inteligencia de negocios que monitoree la calidad del aire, identifique contaminantes, simule el proceso de purificación y presente los resultados en dashboards e indicadores para apoyar la toma de decisiones.</p>
-<p><b>Objetivos específicos:</b> (1) registrar y clasificar el aire que ingresa; (2) seleccionar la tecnología de purificación según el contaminante y controlar su tiempo de funcionamiento; (3) validar el aire tratado comparando valores iniciales y finales; (4) construir un dashboard con indicadores de eficiencia, alertas y un modelo predictivo.</p>
+<h2>1. Introducción</h2>
+<p>Cuando se habla de contaminación del aire casi siempre se piensa en el humo de los carros, pero el problema va más allá. Las partículas finas (PM2.5 y PM10) entran a los pulmones, el monóxido de carbono (CO) es tóxico incluso en concentraciones bajas y el dióxido de carbono (CO₂) acumulado en un salón lleno de gente produce cansancio y dolor de cabeza. Es decir, el aire “malo” no es uno solo: depende de dónde venga.</p>
+<p>La actividad planteaba una pregunta concreta: <i>¿cómo desarrollar una aplicación inteligente que permita identificar el ingreso de aire contaminado, analizar sus componentes, controlar el proceso de descontaminación y verificar la calidad del aire purificado mediante indicadores y herramientas de inteligencia de negocios?</i></p>
+<p>Mi respuesta fue construir <b>Air Quality Intelligence</b>, una aplicación web que simula una cámara de purificación. El aire entra, los sensores lo miden, el sistema decide qué filtros usar, se purifica durante un tiempo controlado y al final se vuelve a medir para saber si de verdad quedó limpio. Todo lo que pasa queda guardado en una base de datos y se analiza en un dashboard.</p>
+<p><b>Objetivo general.</b> Diseñar y desarrollar una aplicación de inteligencia de negocios que monitoree la calidad del aire, identifique los contaminantes, simule el proceso de purificación y muestre los resultados en indicadores que sirvan para tomar decisiones.</p>
+<p><b>Objetivos específicos.</b></p>
+<ul>
+<li>Registrar cada ingreso de aire y clasificar qué tan contaminado llega.</li>
+<li>Escoger la tecnología de filtrado según el contaminante y controlar el tiempo de funcionamiento.</li>
+<li>Comprobar el resultado comparando los valores de entrada y de salida.</li>
+<li>Construir un dashboard con indicadores de eficiencia, alertas y un modelo que prediga el tiempo de purificación.</li>
+</ul>
 
-<h2>2. Arquitectura tecnológica</h2>
-<p>La solución se organiza en cuatro componentes: <b>entrada de aire</b> (sensores de PM2.5, PM10, CO₂, CO y COV), <b>sistema de purificación</b> (cámara de ${M.VOLUMEN_CAMARA} m³ con cinco tecnologías), <b>software BI</b> (API, motor de reglas, modelo predictivo y dashboard) y <b>base de datos</b> (mediciones de entrada, proceso y salida).</p>
-${img('arquitectura', 640)}<p class="cap">Figura 1. Arquitectura de la solución.</p>
-<table><tr><th>Capa</th><th>Tecnología</th><th>Uso</th></tr>
-<tr><td>Interfaz</td><td>HTML5, CSS3, JavaScript, Chart.js 4.4</td><td>Módulos 1–4, dashboard y reportes (modo claro/oscuro, adaptable a móvil)</td></tr>
-<tr><td>Backend</td><td>Node.js ≥ 22 (http nativo)</td><td>API REST, simulación de sensores y del proceso, reglas de alerta</td></tr>
-<tr><td>Base de datos</td><td>SQLite (node:sqlite); script equivalente PostgreSQL</td><td>Almacenamiento de lotes, mediciones, procesos, alertas y filtros</td></tr>
-<tr><td>Análisis</td><td>Node.js y Python (librería estándar)</td><td>Estadística antes/después, prueba t pareada, regresión, exportación CSV para Power BI</td></tr></table>
+<h2>2. Arquitectura de la solución</h2>
+<p>Organicé el sistema en las cuatro partes que pedía la guía. Primero está la <b>entrada de aire</b>, donde los sensores miden PM2.5, PM10, CO₂, CO y, como extra, compuestos orgánicos volátiles (COV). Después viene el <b>sistema de purificación</b>, una cámara de ${M.VOLUMEN_CAMARA} m³ con cinco tecnologías distintas. El <b>software BI</b> recibe los datos, aplica las reglas y alimenta el dashboard. Por último, la <b>base de datos</b> guarda todas las mediciones: las de entrada, las que se toman cada minuto durante el proceso y las de salida.</p>
+${img('arquitectura', 640)}<p class="cap">Figura 1. Arquitectura general del sistema.</p>
+<p>En cuanto a tecnologías, tomé algunas decisiones que vale la pena explicar. La guía sugería React y MySQL o PostgreSQL. Preferí JavaScript sin frameworks y SQLite porque así la aplicación funciona en cualquier computador con solo tener Node.js instalado: no hay que montar un servidor de base de datos ni instalar paquetes. Para no cerrar la puerta a PostgreSQL dejé el script equivalente en <i>db/schema_postgresql.sql</i>.</p>
+<table><tr><th>Capa</th><th>Tecnología</th><th>Para qué se usa</th></tr>
+<tr><td>Interfaz</td><td>HTML, CSS, JavaScript y Chart.js</td><td>Las cinco pantallas de la aplicación y los gráficos</td></tr>
+<tr><td>Servidor</td><td>Node.js</td><td>API REST, simulación de sensores y del proceso, reglas de alerta</td></tr>
+<tr><td>Base de datos</td><td>SQLite (con script para PostgreSQL)</td><td>Guardar ingresos, mediciones, procesos, alertas y filtros</td></tr>
+<tr><td>Análisis</td><td>Node.js y Python</td><td>Estadística antes/después, regresión y exportación a CSV para Power BI</td></tr></table>
 
-<h3>2.1 Modelo de datos</h3>
-<table><tr><th>Tabla</th><th>Contenido</th></tr>
-<tr><td>lotes</td><td>Cada ingreso de aire: fecha y hora, escenario de origen, ubicación, volumen, fuente (sensor/manual), nivel e ICA de entrada.</td></tr>
-<tr><td>mediciones</td><td>Lecturas de PM2.5, PM10, CO₂, CO y COV con su etapa (entrada, proceso minuto a minuto, salida) y nivel.</td></tr>
-<tr><td>procesos</td><td>Filtros usados, tiempo programado y real, tiempo predicho, % de reducción por contaminante, eficiencia global y resultado.</td></tr>
-<tr><td>alertas</td><td>Tipo, severidad, contaminante, valor, umbral, mensaje y estado (atendida).</td></tr>
-<tr><td>filtros</td><td>Catálogo de tecnologías con CADR, vida útil y horas de uso.</td></tr>
-<tr><td>v_comparacion (vista)</td><td>Una fila por ingreso con valores antes y después: fuente del dashboard y de Power BI.</td></tr></table>
+<h3>2.1 Base de datos</h3>
+<p>Cada vez que entra aire a la cámara se crea un registro al que llamé <i>lote</i>. A ese lote se le asocian todas sus mediciones y el proceso de purificación que se le aplicó. La tabla más importante para el análisis es en realidad una vista, <i>v_comparacion</i>, que pone en una misma fila los valores de antes y de después. De ahí sale casi todo el dashboard.</p>
+<table><tr><th>Tabla</th><th>Qué guarda</th></tr>
+<tr><td>lotes</td><td>Fecha y hora del ingreso, de dónde viene el aire, ubicación, si la medición fue automática o manual, y el nivel con el que llegó.</td></tr>
+<tr><td>mediciones</td><td>Los valores de los cinco contaminantes en cada momento: entrada, cada minuto del proceso y salida.</td></tr>
+<tr><td>procesos</td><td>Filtros usados, tiempo programado, tiempo real, tiempo que predijo el modelo, porcentaje de reducción y resultado final.</td></tr>
+<tr><td>alertas</td><td>Tipo, gravedad, contaminante, valor medido, umbral y si ya fue atendida.</td></tr>
+<tr><td>filtros</td><td>Las cinco tecnologías con su capacidad, su vida útil y cuántas horas llevan de uso.</td></tr></table>
 
-<h3>2.2 Clasificación de la calidad del aire</h3>
-<p>Se usa una escala de seis niveles basada en el Índice de Calidad del Aire de Colombia (Resolución 2254 de 2017) para PM2.5 y PM10; los cortes de CO siguen la EPA, los de CO₂ las recomendaciones de ventilación (ASHRAE/REHVA) y los de COV las guías de la agencia ambiental alemana (UBA). El nivel global del aire es el del contaminante más crítico.</p>
+<h3>2.2 ¿Cómo se decide qué tan malo está el aire?</h3>
+<p>Para que la clasificación no fuera inventada, usé como base el Índice de Calidad del Aire de Colombia (Resolución 2254 de 2017) en el caso del material particulado. Para el CO tomé los cortes de la EPA, para el CO₂ las recomendaciones de ventilación de ASHRAE y para los COV las guías de la agencia ambiental alemana. El nivel global del aire lo define el contaminante que esté peor: si todo está bien menos el CO, el aire se clasifica según el CO.</p>
 <table><tr><th>#</th><th>Nivel</th><th>PM2.5 µg/m³</th><th>PM10 µg/m³</th><th>CO₂ ppm</th><th>CO ppm</th><th>COV mg/m³</th></tr>${niveles}</table>
 
 <h3>2.3 Tecnologías de purificación</h3>
-<table><tr><th>Tecnología</th><th>Principio</th><th>Contaminante objetivo</th><th>CADR m³/h</th><th>Vida útil h</th></tr>${filtros}</table>
-<div class="caja">Ninguna tecnología elimina todos los contaminantes: el HEPA captura partículas pero no gases; el carbón activado adsorbe COV pero casi no retiene CO ni CO₂; el CO requiere oxidación catalítica y el CO₂ un adsorbente específico o renovación de aire. Por eso el sistema recomienda la combinación según los contaminantes detectados.</div>
+<table><tr><th>Tecnología</th><th>Cómo funciona</th><th>Qué elimina</th><th>CADR m³/h</th><th>Vida útil (h)</th></tr>${filtros}</table>
+<div class="caja">Uno de los puntos que más me interesó de la guía fue la nota técnica: ningún filtro sirve para todo. El HEPA atrapa partículas pero deja pasar los gases. El carbón activado retiene los COV pero casi no sirve para el CO ni para el CO₂. Para el CO hace falta un catalizador que lo convierta en CO₂, y para el CO₂ un adsorbente especial o renovar el aire. Por eso la aplicación no usa siempre el mismo filtro, sino que recomienda una combinación según lo que detecten los sensores.</div>
 
-<h3>2.4 Modelo físico y predictivo</h3>
-<p>La cámara se modela como un reactor de mezcla completa. Para cada contaminante:</p>
+<h3>2.4 El modelo que hay detrás de la simulación</h3>
+<p>Para que la simulación se pareciera a la realidad no quise usar números al azar. Modelé la cámara como un espacio donde el aire está bien mezclado: cada minuto los filtros limpian una parte del aire y la concentración baja de forma exponencial, primero rápido y luego cada vez más despacio. La ecuación es:</p>
 <p class="formula">C(t) = C<sub>∞</sub> + (C<sub>0</sub> − C<sub>∞</sub>) · e<sup>−k·t</sup>,&nbsp;&nbsp;&nbsp; k = Σ (CADR<sub>i</sub> · η<sub>i</sub> · d<sub>i</sub>) / V</p>
-<p>donde C<sub>∞</sub> es la concentración mínima alcanzable, η la eficiencia de captura de cada filtro, d un factor de desgaste (la eficiencia cae hasta 35 % al final de la vida útil) y V el volumen de la cámara. Despejando t se predice el tiempo necesario para alcanzar el nivel “Buena”. Durante el proceso, k se reestima por mínimos cuadrados sobre ln(C − C<sub>∞</sub>) con las lecturas reales para actualizar el tiempo restante.</p>
+<p>C<sub>0</sub> es la concentración con la que llega el aire y C<sub>∞</sub> la mínima a la que se puede llegar. La constante <i>k</i> depende de cuánto aire limpia cada filtro (CADR), de qué tan eficiente es con ese contaminante (η) y del volumen de la cámara (V). También agregué un factor de desgaste (d): un filtro viejo pierde hasta el 35 % de su eficiencia, igual que pasa en la vida real.</p>
+<p>Lo útil de esta ecuación es que se puede despejar el tiempo. Así, apenas llega el aire, la aplicación ya sabe cuántos minutos necesitará para dejarlo en nivel “Buena”. Además, mientras el proceso avanza, vuelve a calcular <i>k</i> con las lecturas reales (por mínimos cuadrados) y corrige el tiempo restante.</p>
 
-<h2>3. Desarrollo de la aplicación</h2>
+<h2>3. Cómo funciona la aplicación</h2>
 <h3>Módulo 1. Monitoreo del aire contaminado</h3>
-<p>Registra la fecha y hora del ingreso, mide los cinco contaminantes (sensores simulados por escenario o ingreso manual), calcula el ICA de PM2.5, clasifica el nivel, genera alertas y recomienda la tecnología de purificación con el tiempo estimado.</p>
-${img('monitoreo')}<p class="cap">Figura 2. Módulo de monitoreo.</p>
+<p>Es la pantalla de entrada. Se escoge de dónde viene el aire (tráfico, zona industrial, humo de incendio, un salón con mucha gente o una obra) y al pulsar <i>Detectar ingreso de aire</i> los sensores toman la medición. También se pueden escribir los valores a mano, por ejemplo para probar un caso concreto. La aplicación guarda la fecha y la hora, calcula el índice de calidad del aire, pinta cada contaminante con el color de su nivel y, si algo supera los límites, genera alertas. Al lado aparece qué filtros recomienda y cuánto tiempo cree que va a tardar.</p>
+${img('monitoreo')}<p class="cap">Figura 2. Pantalla de monitoreo con un ingreso de zona industrial.</p>
 <h3>Módulo 2. Proceso de descontaminación</h3>
-<p>Permite seleccionar los filtros (con su vida útil), fijar el tiempo de funcionamiento (5–120 min), detener automáticamente al alcanzar calidad “Buena” y activar la filtración simulada. Cada minuto se registra una medición en la base de datos y se muestra la curva de concentración y el tiempo restante estimado.</p>
-${img('proceso')}<p class="cap">Figura 3. Proceso de descontaminación con registro minuto a minuto.</p>
+<p>Aquí se controla la purificación. Los filtros recomendados ya vienen marcados, pero se pueden cambiar. Si se quita uno necesario, por ejemplo el depurador de CO₂ cuando el CO₂ está alto, la aplicación avisa que ese contaminante no va a bajar. También se fija el tiempo de funcionamiento y se puede pedir que el proceso se detenga solo cuando el aire llegue a “Buena”. Durante la simulación se ve el ventilador girando, la curva de cada contaminante y una tabla que se va llenando minuto a minuto. Cada una de esas lecturas queda en la base de datos.</p>
+${img('proceso')}<p class="cap">Figura 3. Proceso de descontaminación y registro de cada minuto.</p>
 <h3>Módulo 3. Validación del aire purificado</h3>
-<p>Al terminar se toma una nueva medición, se comparan los valores iniciales y finales, se calcula el porcentaje de reducción de cada contaminante y la eficiencia global (promedio de los contaminantes que estaban fuera de “Buena”), y se clasifica el resultado: <b>Óptimo</b> (aire en nivel Buena y eficiencia ≥ 50 %), <b>Aceptable</b> (nivel Aceptable o mejor) o <b>Insuficiente</b>.</p>
-${img('validacion')}<p class="cap">Figura 4. Validación antes vs. después.</p>
+<p>No basta con suponer que el aire quedó limpio: hay que medirlo otra vez. Al terminar el proceso se hace una nueva medición y se compara con la de entrada. Para cada contaminante se calcula cuánto se redujo y si cambió de nivel. Con eso el tratamiento se clasifica como <b>Óptimo</b> (todo quedó en “Buena” con al menos 50 % de reducción), <b>Aceptable</b> (quedó en “Aceptable” o mejor) o <b>Insuficiente</b> (el aire sigue siendo dañino y no debería liberarse).</p>
+${img('validacion')}<p class="cap">Figura 4. Comparación antes y después de un tratamiento.</p>
 <h3>Módulo 4. Inteligencia de negocios</h3>
-<p>El dashboard incluye seis indicadores (PM2.5 antes→después, CO₂ en ppm, porcentaje de reducción, tiempo de purificación, porcentaje de aire conforme y alertas abiertas), cinco visualizaciones, el estado de los filtros, la tabla de alertas y recomendaciones automáticas. Se puede filtrar por rango de fechas y escenario; la pestaña de reportes genera el resumen ejecutivo, CSV y PDF.</p>
-${img('dashboard_1')}<p class="cap">Figura 5. Dashboard: filtros, indicadores y gráficos principales.</p>${img('dashboard_2')}<p class="cap">Figura 6. Dashboard: tiempos por escenario, estado de filtros, recomendaciones y alertas.</p>
-<h3>Componente de inteligencia</h3>
-<table><tr><th>Regla / modelo</th><th>Condición</th><th>Acción</th></tr>
-<tr><td>Contaminación en la entrada</td><td>Contaminante en nivel ≥ 3 (media), 4 (alta) o ≥ 5 (crítica)</td><td>Alerta y recomendación de filtros</td></tr>
-<tr><td>Eficiencia baja</td><td>A mitad del tiempo programado, reducción &lt; 40 % de un contaminante crítico</td><td>Alerta: revisar selección o estado del filtro</td></tr>
-<tr><td>Salida fuera de norma</td><td>Aire tratado con nivel ≥ 3</td><td>Alerta: no liberar, repetir tratamiento</td></tr>
-<tr><td>Filtro saturado</td><td>Horas de uso ≥ 80 % de la vida útil</td><td>Alerta de mantenimiento preventivo</td></tr>
-<tr><td>Modelo predictivo</td><td>Decaimiento exponencial + regresión histórica</td><td>Tiempo estimado al iniciar y tiempo restante en línea</td></tr></table>
+<p>Esta es la parte pensada para quien toma decisiones, no para quien opera la máquina. Arriba están los seis indicadores: PM2.5 antes y después, CO₂ en ppm, porcentaje de reducción, tiempo promedio de purificación, porcentaje de aire que sale conforme y alertas abiertas. Debajo hay cinco gráficos, el estado de los filtros, una lista de recomendaciones que la aplicación genera sola y la tabla de alertas. Todo se puede filtrar por fechas y por tipo de escenario.</p>
+${img('dashboard_1')}<p class="cap">Figura 5. Dashboard: filtros, indicadores y gráficos principales.</p>${img('dashboard_2')}<p class="cap">Figura 6. Dashboard: tiempos por escenario, filtros, recomendaciones y alertas.</p>
+<h3>El componente de inteligencia</h3>
+<p>La guía pedía una regla de alertas <i>o</i> un modelo predictivo. Implementé las dos cosas porque se complementan: las reglas avisan cuando algo va mal y el modelo ayuda a planear.</p>
+<table><tr><th>Regla o modelo</th><th>Cuándo se activa</th><th>Qué hace</th></tr>
+<tr><td>Contaminación en la entrada</td><td>Un contaminante llega en nivel 3 o más</td><td>Genera una alerta (media, alta o crítica según el nivel) y recomienda filtros</td></tr>
+<tr><td>Eficiencia baja</td><td>A la mitad del tiempo programado un contaminante crítico no ha bajado ni el 40 %</td><td>Avisa que hay que revisar los filtros elegidos o su estado</td></tr>
+<tr><td>Salida fuera de norma</td><td>El aire tratado sigue en nivel 3 o peor</td><td>Indica que no se debe liberar y que hay que repetir el tratamiento</td></tr>
+<tr><td>Filtro desgastado</td><td>Un filtro pasa del 80 % de su vida útil</td><td>Pide programar el cambio</td></tr>
+<tr><td>Modelo predictivo</td><td>Al iniciar y durante cada proceso</td><td>Estima el tiempo total y el tiempo que falta</td></tr></table>
 
 <h2>4. Resultados</h2>
-<p>Se analizaron ${k.lotes} ingresos de aire simulados entre ${rango.a} y ${rango.b}, de los cuales ${k.procesos} completaron el tratamiento.</p>
+<p>Para tener suficientes datos que analizar generé dos meses de operación simulada, del ${fechaLarga(rango.a)} al ${fechaLarga(rango.b)}. En ese periodo entraron ${k.lotes} lotes de aire y ${k.procesos} pasaron por el proceso completo. Algunos se dejaron sin tratar y en otros se simularon errores del operador, como usar solo el filtro HEPA o programar muy poco tiempo, para ver si el sistema los detectaba.</p>
 <table><tr><th>Contaminante</th><th>Unidad</th><th>Promedio antes</th><th>Promedio después</th><th>Reducción media</th></tr>${tablaCont}</table>
-<p>El material particulado se redujo en promedio ${f(k.red_pm25)} % (PM2.5) y ${f(k.red_pm10)} % (PM10), con diferencias estadísticamente significativas (prueba t pareada, ver <i>docs/analisis_resultados.md</i>). El CO₂ apenas bajó ${f(k.red_co2)} % porque solo una parte de los tratamientos incluyó el depurador de CO₂. El tiempo medio de purificación fue ${f(k.tiempo_prom)} min y el ${f(k.pct_conforme)} % de los tratamientos entregó aire conforme (Óptimo ${k.optimos}, Aceptable ${k.aceptables}, Insuficiente ${k.insuficientes}).</p>
-${ejemplo ? `<p><b>Ejemplo:</b> el ingreso #${ejemplo.lote_id} (zona industrial) llegó con PM2.5 = ${f(ejemplo.pm25_ini)} µg/m³ y CO = ${f(ejemplo.co_ini, 2)} ppm; tras ${ejemplo.duracion_real_min} min con ${ejemplo.filtros.replace(/,/g, ' + ')} salió con ${f(ejemplo.pm25_fin)} µg/m³ y ${f(ejemplo.co_fin, 2)} ppm (predicción: ${f(ejemplo.tiempo_predicho_min)} min).</p>` : ''}
-<h3>Desempeño por escenario</h3>
+<p>El resultado más claro está en el material particulado: el PM2.5 bajó en promedio un ${f(k.red_pm25)} % y el PM10 un ${f(k.red_pm10)} %. Para confirmar que la diferencia no era casualidad apliqué una prueba t pareada, y en todos los contaminantes salió significativa (el detalle está en <i>docs/analisis_resultados.md</i>). El CO₂, en cambio, apenas bajó un ${f(k.red_co2)} %. Al principio pensé que era un error, pero tiene sentido: solo una parte de los tratamientos incluyó el depurador de CO₂, y el catalizador, al eliminar el CO, lo convierte justamente en CO₂.</p>
+<p>En promedio cada purificación tardó ${f(k.tiempo_prom)} minutos y el ${f(k.pct_conforme)} % de los tratamientos dejó el aire en condiciones aceptables o mejores (${k.optimos} óptimos, ${k.aceptables} aceptables y ${k.insuficientes} insuficientes).</p>
+${ejemplo ? `<p>Un caso concreto: el lote #${ejemplo.lote_id}, de zona industrial, llegó con ${f(ejemplo.pm25_ini)} µg/m³ de PM2.5 y ${f(ejemplo.co_ini, 2)} ppm de CO. Después de ${ejemplo.duracion_real_min} minutos con ${ejemplo.filtros.replace(/,/g, ' + ')} salió con ${f(ejemplo.pm25_fin)} µg/m³ y ${f(ejemplo.co_fin, 2)} ppm. El modelo había calculado ${f(ejemplo.tiempo_predicho_min)} minutos.</p>` : ''}
+<h3>Según el origen del aire</h3>
 <table><tr><th>Escenario</th><th>Ingresos</th><th>PM2.5 inicial</th><th>Tiempo medio (min)</th><th>Eficiencia</th><th>Insuficientes</th></tr>${tablaEsc}</table>
-<h3>Desempeño por combinación de tecnologías</h3>
+<p>${incendio ? `El humo de incendio es el caso más exigente: llega con mucho material particulado y necesita en promedio ${f(incendio.tiempo)} minutos.` : ''} ${urbano ? `El aire urbano, en cambio, se limpia en unos ${f(urbano.tiempo)} minutos.` : ''} Algo que no esperaba es que el aire de un salón con mucha gente tarde tanto, aunque casi no tenga partículas. La razón es el CO₂, que es el contaminante más lento de eliminar.</p>
+<h3>Según la combinación de filtros</h3>
 <table><tr><th>Tecnologías</th><th>Procesos</th><th>Eficiencia</th><th>Tiempo medio (min)</th></tr>${tablaComb}</table>
-<p>Usar solo HEPA cuando hay gases presentes produce la menor eficiencia: confirma que la tecnología debe elegirse según el contaminante.</p>
-<h3>Modelo predictivo</h3>
-<p>Regresión lineal histórica: <b>tiempo ≈ ${f(d.modelo.a, 2)} + ${f(d.modelo.b, 3)} × PM2.5 inicial</b> (R² = ${f(d.modelo.r2, 3)}, n = ${d.modelo.n}). El R² moderado se explica porque el tiempo también depende de los gases presentes; por eso la aplicación usa el modelo exponencial por contaminante, cuyo error medio absoluto frente al tiempo real fue de <b>${f(d.modelo.mae_prediccion_min)} min</b>.</p>
-<h3>Alertas</h3>
-<table><tr><th>Tipo</th><th>Severidad</th><th>Cantidad</th></tr>${d.alertasTipo.map(a => `<tr><td>${a.tipo}</td><td>${a.severidad}</td><td class=n>${a.n}</td></tr>`).join('')}</table>
-${img('reportes', 560)}<p class="cap">Figura 7. Reporte para la toma de decisiones.</p>
+<p>Esta tabla resume bien la idea central del trabajo. ${soloHepa ? `Cuando se usó solo HEPA la eficiencia promedio fue de apenas ${f(soloHepa.eficiencia)} %,` : 'Usar solo HEPA dio la eficiencia más baja,'} ${mejorComb ? `mientras que la combinación ${mejorComb.filtros.replace(/,/g, ' + ')} llegó a ${f(mejorComb.eficiencia)} %.` : ''} El HEPA es muy bueno, pero solo para partículas. Si el aire trae gases, hay que acompañarlo con otras tecnologías.</p>
+<h3>¿Qué tan bien predice el modelo?</h3>
+<p>Primero probé algo sencillo: una regresión lineal entre el PM2.5 inicial y el tiempo de purificación. Dio <b>tiempo ≈ ${f(d.modelo.a, 2)} + ${f(d.modelo.b, 3)} × PM2.5 inicial</b>, con un R² de ${f(d.modelo.r2, 3)}. Es un ajuste moderado, y la explicación es que el tiempo no depende solo de las partículas: si hay mucho CO₂ o CO, el proceso se alarga aunque el PM2.5 sea bajo. Por eso la aplicación usa el modelo exponencial, que calcula el tiempo contaminante por contaminante. Ese modelo se equivocó en promedio <b>${f(d.modelo.mae_prediccion_min)} minuto</b> frente al tiempo real.</p>
+<h3>Alertas generadas</h3>
+<p>En total se generaron ${nAlertas} alertas. La mayoría (${alertasDe('CONTAMINACION_ENTRADA')}) fueron por aire que llegó muy contaminado, lo cual es normal en este tipo de planta. Las más útiles para la operación fueron las ${alertasDe('EFICIENCIA_BAJA')} de eficiencia baja y las ${alertasDe('SALIDA_FUERA_NORMA')} de salida fuera de norma, porque coinciden justamente con los casos en que se simuló un error del operador.</p>
+<table><tr><th>Tipo</th><th>Gravedad</th><th>Cantidad</th></tr>${d.alertasTipo.map(a => `<tr><td>${a.tipo}</td><td>${a.severidad}</td><td class=n>${a.n}</td></tr>`).join('')}</table>
+${img('reportes', 560)}<p class="cap">Figura 7. Reporte con el resumen ejecutivo.</p>
 
-<h2>5. Decisiones recomendadas por el sistema</h2>
+<h2>5. Decisiones que sugiere el sistema</h2>
+<p>Con los datos de estos dos meses, la aplicación generó automáticamente estas recomendaciones:</p>
 <ul>${d.recomendaciones.map(r => `<li>${r}</li>`).join('')}</ul>
 
 <h2>6. Conclusiones</h2>
-<ul>
-<li>La aplicación cubre el ciclo completo: detección del ingreso, medición y clasificación, purificación controlada, validación y análisis BI, con todas las mediciones almacenadas en la base de datos.</li>
-<li>La combinación de tecnologías según el contaminante es determinante: el HEPA reduce más del 98 % del material particulado, pero el CO, los COV y el CO₂ requieren catalizador, carbón activado y depurador respectivamente.</li>
-<li>Los indicadores de reducción, tiempo y conformidad permiten comparar escenarios y combinaciones de filtros y decidir mantenimiento, programación y capacidad (CADR).</li>
-<li>El componente de inteligencia (reglas de alerta y modelo predictivo) anticipa el tiempo de tratamiento con un error cercano a un minuto y detecta filtros degradados y tratamientos insuficientes.</li>
-<li>Limitaciones y trabajo futuro: los datos son simulados; el siguiente paso es conectar sensores reales (p. ej. PMS5003 para partículas, SCD30 para CO₂ y MQ-7 para CO con un ESP32) a la misma API y migrar a PostgreSQL con el script incluido.</li>
-</ul>
+<p>La aplicación cumple el ciclo completo que pedía el reto: detecta el aire que entra, lo mide y lo clasifica, controla la purificación, verifica el resultado y convierte todo eso en indicadores. Cada medición queda guardada, así que cualquier número del dashboard se puede rastrear hasta el dato original.</p>
+<p>La lección más importante fue que el filtro correcto depende del contaminante. El HEPA elimina casi todas las partículas, pero no hace nada contra el CO, los COV o el CO₂. Un sistema que use siempre el mismo filtro puede mostrar buenos resultados en PM2.5 y aun así liberar aire que no es seguro.</p>
+<p>También me pareció valioso el enfoque de inteligencia de negocios. Más allá de mostrar gráficos bonitos, los indicadores sirven para tomar decisiones concretas: cuándo cambiar un filtro, qué tipo de aire conviene tratar en horas de menos demanda o si vale la pena invertir en un equipo con más capacidad.</p>
+<p>La principal limitación es que los datos son simulados. Aunque el modelo se basa en ecuaciones reales, el siguiente paso sería conectar sensores de verdad. Por ejemplo, un PMS5003 para partículas, un SCD30 para CO₂ y un MQ-7 para CO, conectados a un ESP32 que envíe los datos a la misma API. La aplicación ya está preparada para eso, y la base de datos se puede migrar a PostgreSQL con el script incluido.</p>
+
 <h2>Referencias</h2>
 <ul>
-<li>Ministerio de Ambiente y Desarrollo Sostenible. Resolución 2254 de 2017 (norma de calidad del aire ambiente, Colombia).</li>
-<li>U.S. EPA. Technical Assistance Document for the Reporting of Daily Air Quality – the Air Quality Index (AQI).</li>
-<li>ASHRAE Standard 62.1 – Ventilation and Acceptable Indoor Air Quality.</li>
-<li>Umweltbundesamt (UBA). Guide values for indoor air: total volatile organic compounds (TVOC).</li>
-<li>AHAM AC-1. Method for Measuring Performance of Portable Household Electric Room Air Cleaners (CADR).</li>
+<li>Ministerio de Ambiente y Desarrollo Sostenible. (2017). <i>Resolución 2254 de 2017: norma de calidad del aire ambiente</i>. Bogotá, Colombia.</li>
+<li>U.S. Environmental Protection Agency. <i>Technical Assistance Document for the Reporting of Daily Air Quality – the Air Quality Index (AQI)</i>.</li>
+<li>ASHRAE. <i>Standard 62.1: Ventilation and Acceptable Indoor Air Quality</i>.</li>
+<li>Umweltbundesamt (UBA). <i>Guide values for indoor air: total volatile organic compounds (TVOC)</i>.</li>
+<li>AHAM. <i>AC-1: Method for Measuring Performance of Portable Household Electric Room Air Cleaners</i>.</li>
 </ul>
 </body></html>`;
 

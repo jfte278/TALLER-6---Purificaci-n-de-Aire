@@ -1,12 +1,12 @@
 # Air Quality Intelligence
 
-Sistema inteligente para el **monitoreo, descontaminación y purificación del aire** con un dashboard de **inteligencia de negocios**.
+Aplicación web que simula una cámara de purificación de aire. El aire contaminado entra, los sensores lo miden, el sistema escoge los filtros adecuados, lo purifica y al final vuelve a medirlo para comprobar que quedó limpio. Todo queda guardado en una base de datos y se analiza en un dashboard de inteligencia de negocios.
 
-> **Reto:** ¿cómo desarrollar una aplicación que identifique el ingreso de aire contaminado, analice sus componentes, controle el proceso de descontaminación y verifique la calidad del aire purificado mediante indicadores y BI?
+La hice como respuesta al reto de la actividad: *¿cómo identificar el aire contaminado que entra, analizar sus componentes, controlar la descontaminación y verificar el resultado con indicadores y BI?*
 
 ![Dashboard](docs/capturas/dashboard.png)
 
-## Funcionalidades
+## Qué hace cada módulo
 
 | Módulo | Qué hace |
 |---|---|
@@ -102,6 +102,6 @@ npm start            # crea la base de datos con 60 días de historia y abre htt
 - Informe técnico: [`docs/Informe_Tecnico_Air_Quality_Intelligence.pdf`](docs/Informe_Tecnico_Air_Quality_Intelligence.pdf).
 - Video demostrativo: guion en [`docs/guion_video.md`](docs/guion_video.md) — enlace de YouTube: _pendiente_.
 
-> **Nota técnica:** los datos son simulados con un modelo físico simplificado (mezcla completa en una cámara de 60 m³). Los filtros HEPA capturan partículas pero no gases; el carbón activado adsorbe COV pero casi no retiene CO ni CO₂. Por eso el sistema combina tecnologías según el contaminante identificado.
+> **Sobre los datos:** son simulados, pero no al azar. Detrás hay un modelo físico sencillo de una cámara de 60 m³ donde la concentración baja de forma exponencial según los filtros que se usen. Un detalle importante: el HEPA atrapa partículas pero no gases, y el carbón activado sirve para los COV pero casi no retiene CO ni CO₂. Por eso el sistema combina tecnologías según lo que detecten los sensores.
 
 Autor: José Fernando Téllez · 2026

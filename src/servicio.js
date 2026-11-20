@@ -1,6 +1,4 @@
-// =====================================================================
 // Lógica de negocio de los módulos 1, 2 y 3.
-// =====================================================================
 const M = require('./modelo');
 
 class ErrorNegocio extends Error { constructor(msg, status = 400) { super(msg); this.status = status; } }

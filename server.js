@@ -1,7 +1,5 @@
-// =====================================================================
 // AIR QUALITY INTELLIGENCE - Servidor HTTP + API REST (Node.js puro)
 // Uso: node server.js   ->  http://localhost:3000
-// =====================================================================
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');

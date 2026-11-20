@@ -1,6 +1,4 @@
-/* =====================================================================
-   AIR QUALITY INTELLIGENCE - Interfaz (JavaScript sin frameworks)
-   ===================================================================== */
+// Interfaz de la aplicación. Está hecha con JavaScript normal, sin React ni otros frameworks.
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const sleep = ms => new Promise(r => setTimeout(r, ms));

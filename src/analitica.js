@@ -1,6 +1,4 @@
-// =====================================================================
 // Módulo 4: Inteligencia de negocios (KPI, series, regresión, reportes)
-// =====================================================================
 const M = require('./modelo');
 
 const r1 = v => (v == null ? null : Math.round(v * 10) / 10);

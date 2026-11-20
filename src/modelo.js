@@ -1,7 +1,5 @@
-// =====================================================================
 // Modelo de dominio: contaminantes, escala de calidad, filtros,
 // sensores simulados, dinámica de purificación y reglas inteligentes.
-// =====================================================================
 
 const CONTAMINANTES = {
   pm25: { nombre: 'PM2.5', unidad: 'µg/m³', dec: 1, piso: 1.5 },

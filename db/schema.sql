@@ -1,9 +1,7 @@
--- =====================================================================
 -- AIR QUALITY INTELLIGENCE - Esquema de base de datos (SQLite)
--- Una "lote" es una porción de aire contaminado que ingresa a la cámara
+-- Un "lote" es una porción de aire contaminado que ingresa a la cámara
 -- de tratamiento. Cada lote tiene una medición de ENTRADA, mediciones
 -- minuto a minuto durante el PROCESO y una medición de SALIDA.
--- =====================================================================
 
 PRAGMA foreign_keys = ON;
 
